@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 
 import logoImg from './assets/logo.png';
 import AvailablePlaces from './components/AvailablePlaces.jsx';
@@ -6,31 +6,42 @@ import DeleteConfirmation from './components/DeleteConfirmation.jsx';
 import Error from './components/Error.jsx';
 import Modal from './components/Modal.jsx';
 import Places from './components/Places.jsx';
+import { useFetch } from './hooks/useFetch.js';
 import { fetchUserPlaces, updateUserPlaces } from './http.js';
 
 function App() {
   const selectedPlace = useRef();
 
-  const [userPlaces, setUserPlaces] = useState([]);
-  const [isFetching, setIsFetching] = useState(false);
-  const [error, setError] = useState(null);
+  // const [userPlaces, setUserPlaces] = useState([]);
+  // const [isFetching, setIsFetching] = useState(false);
+  // const [error, setError] = useState();
+
   const [errorUpdatingPlaces, setErrorUpdatingPlaces] = useState();
 
   const [modalIsOpen, setModalIsOpen] = useState(false);
 
-  useEffect(() => {
-    async function fetchPlaces() {
-      setIsFetching(true);
-      try {
-        const places = await fetchUserPlaces();
-        setUserPlaces(places);
-      } catch (error) {
-        setError({ message: error.message || 'Failed to fetch user places' });
-      }
-    }
-    setIsFetching(true);
-    fetchPlaces();
-  }, []);
+  const {
+    isFetching,
+    error,
+    fetchedData: userPlaces,
+    setFetchedData: setUserPlaces
+  } = useFetch(fetchUserPlaces, []);
+
+  // useEffect(() => {
+  //   async function fetchPlaces() {
+  //     setIsFetching(true);
+  //     try {
+  //       const places = await fetchUserPlaces();
+  //       setUserPlaces(places);
+  //     } catch (error) {
+  //       setError({ message: error.message || 'Failed to fetch user places.' });
+  //     }
+
+  //     setIsFetching(false);
+  //   }
+
+  //   fetchPlaces();
+  // }, []);
 
   function handleStartRemovePlace(place) {
     setModalIsOpen(true);
@@ -43,6 +54,7 @@ function App() {
 
   async function handleSelectPlace(selectedPlace) {
     // await updateUserPlaces([selectedPlace, ...userPlaces]);
+
     setUserPlaces(prevPickedPlaces => {
       if (!prevPickedPlaces) {
         prevPickedPlaces = [];
@@ -52,10 +64,10 @@ function App() {
       }
       return [selectedPlace, ...prevPickedPlaces];
     });
+
     try {
       await updateUserPlaces([selectedPlace, ...userPlaces]);
     } catch (error) {
-      // console.log(error.message);
       setUserPlaces(userPlaces);
       setErrorUpdatingPlaces({
         message: error.message || 'Failed to update places.'
@@ -68,6 +80,7 @@ function App() {
       setUserPlaces(prevPickedPlaces =>
         prevPickedPlaces.filter(place => place.id !== selectedPlace.current.id)
       );
+
       try {
         await updateUserPlaces(
           userPlaces.filter(place => place.id !== selectedPlace.current.id)
@@ -75,12 +88,13 @@ function App() {
       } catch (error) {
         setUserPlaces(userPlaces);
         setErrorUpdatingPlaces({
-          message: error.message || 'Failed to delete places.'
+          message: error.message || 'Failed to delete place.'
         });
       }
+
       setModalIsOpen(false);
     },
-    [userPlaces]
+    [userPlaces, setUserPlaces]
   );
 
   function handleError() {
@@ -89,15 +103,16 @@ function App() {
 
   return (
     <>
-      <Modal open={errorUpdatingPlaces} onConfirm={handleError}>
+      <Modal open={errorUpdatingPlaces} onClose={handleError}>
         {errorUpdatingPlaces && (
           <Error
-            title="An error occurred"
+            title="An error occurred!"
             message={errorUpdatingPlaces.message}
             onConfirm={handleError}
           />
         )}
       </Modal>
+
       <Modal open={modalIsOpen} onClose={handleStopRemovePlace}>
         <DeleteConfirmation
           onCancel={handleStopRemovePlace}
@@ -114,7 +129,7 @@ function App() {
         </p>
       </header>
       <main>
-        {error && <Error title="An Error Occurred" message={error.message} />}
+        {error && <Error title="An error occurred!" message={error.message} />}
         {!error && (
           <Places
             title="I'd like to visit ..."
